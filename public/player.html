@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Player</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="login">
+  <h2>Pilih Nama</h2>
+  <select id="name">
+    <option>Pia</option><option>Nairda</option><option>Nay</option>
+    <option>Idot</option><option>Nova</option><option>Pranu</option>
+    <option>Ivan</option><option>Rzna</option><option>Ais</option>
+    <option>Nabin</option>
+  </select>
+  <button onclick="enter()">Masuk</button>
+</div>
+
+<div id="game" class="hidden">
+  <div class="topbar">
+    <span id="playerName"></span>
+    <span id="score">0</span>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let name="";
+let canBuzz=false;
+
+// SOUND
+const sounds = {
+  buzzer:new Audio("sounds/buzzer.mp3"),
+  correct:new Audio("sounds/correct.mp3"),
+  wrong:new Audio("sounds/wrong.mp3")
+};
+
+function enter(){
+  name=document.getElementById("name").value;
+  socket.emit("join",name);
+
+  document.getElementById("login").style.display="none";
+  document.getElementById("game").classList.remove("hidden");
+
+  document.getElementById("playerName").innerText=name;
+  canBuzz=true;
+}
+
+// CLICK FULLSCREEN
+document.getElementById("game").onclick=()=>{
+  if(!canBuzz)return;
+  socket.emit("buzz");
+};
+
+// BUZZ RESULT
+socket.on("buzz-result",(winner)=>{
+  const game=document.getElementById("game");
+
+  if(winner===name){
+    game.style.background="green";
+  } else {
+    game.style.background="red";
+  }
+
+  canBuzz=false;
+});
+
+// RESET
+socket.on("reset",()=>{
+  document.getElementById("game").style.background="#ccc";
+  canBuzz=true;
+});
+
+// SCORE
+socket.on("score-self",(s)=>{
+  document.getElementById("score").innerText=s;
+});
+
+// SOUND
+socket.on("play-sound",(type)=>{
+  if(sounds[type]){
+    sounds[type].currentTime=0;
+    sounds[type].play();
+  }
+});
+
+// PODIUM
+socket.on("show-podium",(data)=>{
+  const game=document.getElementById("game");
+
+  if(name===data.first){
+    game.innerHTML=`<div class="winner">🥇 WINNER<br>${name}</div>`;
+    game.style.background="gold";
+  }
+  else if(name===data.second){
+    game.innerHTML=`<div class="rank">🥈 2nd<br>${name}</div>`;
+    game.style.background="silver";
+  }
+  else if(name===data.third){
+    game.innerHTML=`<div class="rank">🥉 3rd<br>${name}</div>`;
+    game.style.background="#cd7f32";
+  }
+  else{
+    game.innerHTML=`<div class="rank">😢</div>`;
+    game.style.background="#222";
+  }
+});
+</script>
+
+</body>
+</html>
