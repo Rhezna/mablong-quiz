@@ -6,8 +6,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// SERVE STATIC FILE
 app.use(express.static("public"));
 
+// PLAYER LIST
 const playersList = [
   "Pia","Nairda","Nay","Idot","Nova",
   "Pranu","Ivan","Rzna","Ais","Nabin"
@@ -20,18 +22,23 @@ let gameActive = false;
 let timer = 0;
 let timerInterval = null;
 
-// INIT
+// INIT PLAYER SCORE
 playersList.forEach(name => {
   players[name] = { score: 0 };
 });
 
+// SOCKET CONNECTION
 io.on("connection", (socket) => {
 
+  // PLAYER JOIN
   socket.on("join", (name)=>{
     socket.name = name;
-    socket.emit("score-self", players[name].score);
+    if(players[name]){
+      socket.emit("score-self", players[name].score);
+    }
   });
 
+  // SEND DATA
   socket.on("get-data", ()=>{
     socket.emit("init", { players });
   });
@@ -40,10 +47,15 @@ io.on("connection", (socket) => {
   socket.on("start-round", ()=>{
     buzzed = null;
     gameActive = true;
+
+    if(timerInterval){
+      clearInterval(timerInterval);
+    }
+
     io.emit("reset");
   });
 
-  // BUZZ
+  // BUZZ SYSTEM
   socket.on("buzz", ()=>{
     if (!gameActive) return;
 
@@ -70,21 +82,26 @@ io.on("connection", (socket) => {
     }
   });
 
-  // SCORE
+  // SCORE UPDATE
   socket.on("score", ({name,value})=>{
-    players[name].score += value;
+    if(players[name]){
+      players[name].score += value;
 
-    io.emit("score-update", {
-      players,
-      highlight:{name,value}
-    });
+      io.emit("score-update", {
+        players,
+        highlight:{name,value}
+      });
 
-    io.emit("play-sound", value > 0 ? "correct" : "wrong");
+      io.emit("play-sound", value > 0 ? "correct" : "wrong");
+    }
   });
 
   // RESET SCORE
   socket.on("reset-score", ()=>{
-    Object.keys(players).forEach(p=>players[p].score=0);
+    Object.keys(players).forEach(p=>{
+      players[p].score = 0;
+    });
+
     io.emit("score-update",{players});
   });
 
@@ -105,16 +122,12 @@ io.on("connection", (socket) => {
 
 });
 
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+// ROOT CHECK
+app.get("/", (req,res)=>{
+  res.send("Quiz Buzzer Server is running 🚀");
+});
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static("public"));
-
+// PORT
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
