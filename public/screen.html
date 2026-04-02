@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Screen</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1 id="timer">-</h1>
+<div id="screen"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket=io();
+const screen=document.getElementById("screen");
+
+const sounds={
+  buzzer:new Audio("sounds/buzzer.mp3"),
+  correct:new Audio("sounds/correct.mp3"),
+  wrong:new Audio("sounds/wrong.mp3")
+};
+
+socket.emit("get-data");
+
+socket.on("score-update",(data)=>{
+  screen.innerHTML="";
+  Object.keys(data.players)
+    .sort((a,b)=>data.players[b].score-data.players[a].score)
+    .forEach(name=>{
+      screen.innerHTML+=`<p>${name} - ${data.players[name].score}</p>`;
+    });
+});
+
+socket.on("timer",(t)=>{
+  document.getElementById("timer").innerText="⏱ "+t;
+});
+
+socket.on("play-sound",(t)=>{
+  sounds[t]?.play();
+});
+
+// PODIUM SCREEN
+socket.on("show-podium",(d)=>{
+  document.body.innerHTML=`
+    <h1>🏆 PODIUM</h1>
+    <div class="podium">
+      <div class="second">🥈 ${d.second}</div>
+      <div class="first">🥇 ${d.first}</div>
+      <div class="third">🥉 ${d.third}</div>
+    </div>
+  `;
+});
+</script>
+</body>
+</html>
